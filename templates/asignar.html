@@ -11,7 +11,7 @@
             margin: 0;
             padding: 0;
         }
-        
+
         .container {
             width: 80%;
             margin: 0 auto;
@@ -21,21 +21,21 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             margin-top: 20px;
         }
-        
+
         h1, h2 {
             color: #333;
             text-align: center;
         }
-        
+
         form {
             margin-bottom: 30px;
         }
-        
+
         label {
             font-weight: bold;
             color: #333;
         }
-        
+
         input[type="text"], select {
             width: 100%;
             padding: 10px;
@@ -43,7 +43,7 @@
             border: 1px solid #ccc;
             border-radius: 4px;
         }
-        
+
         button {
             background-color: #007bff;
             color: white;
@@ -54,16 +54,16 @@
             display: block;
             width: 100%;
         }
-        
+
         button:hover {
             background-color: #0056b3;
         }
-        
+
         ul {
             list-style-type: none;
             padding: 0;
         }
-        
+
         ul li {
             background-color: #f9f9f9;
             margin: 10px 0;
@@ -76,7 +76,7 @@
             font-weight: bold;
             color: #007bff;
         }
-        
+
         .student-info {
             color: #333;
         }
@@ -84,32 +84,40 @@
         .no-data {
             color: #777;
         }
+
+        .delete-icon {
+            color: red;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        .delete-icon:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Asignar Alumno a Curso</h1>
-        
-        <form action="/asignar" method="POST">
-            <label for="documento">Documento del Alumno:</label>
-            <select id="documento" name="documento" required>
+
+        <form method="POST" action="/asignar">
+            <label for="alumno_id">Alumno</label>
+            <select name="documento" id="documento" required>
+                <option value="" disabled selected>Seleccione un alumno</option>
                 {% for alumno in alumnos %}
-                    <option value="{{ alumno.documento }}">{{ alumno.documento }} - {{ alumno.nombre }}</option>
-                {% else %}
-                    <option>No hay alumnos disponibles</option>
+                    <option value="{{ alumno.documento }}">{{ alumno.nombre }} ({{ alumno.documento }})</option>
                 {% endfor %}
             </select>
-
-            <label for="curso_id">Selecciona un Curso:</label>
-            <select id="curso_id" name="curso_id" required>
+            
+            <br>
+            <label for="curso_id">Curso:</label>
+            <select name="curso_id" required>
                 {% for curso in cursos %}
                     <option value="{{ curso.id }}">{{ curso.nombre }}</option>
-                {% else %}
-                    <option>No hay cursos disponibles</option>
                 {% endfor %}
             </select>
-
-            <button type="submit">Asignar Alumno</button>
+            <br>
+            <button type="submit">Asignar</button>
         </form>
 
         <h2>Cursos y Alumnos Asignados</h2>
@@ -121,7 +129,13 @@
                         <span class="student-info">Alumnos Asignados: 
                             <ul>
                                 {% for alumno in curso.alumnos %}
-                                    <li>{{ alumno.nombre }} (Documento: {{ alumno.documento }})</li>
+                                    <li>
+                                        {{ alumno.nombre }} (Documento: {{ alumno.documento }})
+                                        <!-- Botón para dar de baja al alumno -->
+                                        <a href="{{ url_for('baja_alumno', curso_id=curso.id, alumno_id=alumno.id) }}" class="delete-icon" onclick="return confirm('¿Estás seguro de que deseas dar de baja a este alumno?');">
+                                            🗑️
+                                        </a>
+                                    </li>
                                 {% endfor %}
                             </ul>
                         </span>
@@ -131,6 +145,16 @@
                 </li>
             {% endfor %}
         </ul>
+
+
+        <select name="documento" id="documento" required>
+            <option value="" disabled selected>Seleccione un alumno</option>
+            {% for alumno in alumnos %}
+                <option value="{{ alumno.documento }}">{{ alumno.nombre }} ({{ alumno.documento }})</option>
+            {% endfor %}
+        </select>
+        
+        
     </div>
 </body>
 </html>

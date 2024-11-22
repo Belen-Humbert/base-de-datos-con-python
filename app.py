@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, redirect, url_for
 from db_config import get_mongo_connection, get_mysql_connection
 from bson.objectid import ObjectId
 
@@ -7,10 +7,10 @@ app = Flask(__name__)
 @app.route('/asignar', methods=['GET', 'POST'])
 def asignar_alumno_form():
     db_connection = get_mysql_connection()
-    cursor = db_connection.cursor(dictionary=True)
+    cursor = db_connection.cursor(dictionary=True)  # permite ejecutar consultas SQL.
 
     if request.method == 'POST':
-        documento = request.form['documento']
+        documento = request.form['documento']  # Se obtienen los datos enviados desde el formulario
         curso_id = request.form['curso_id']
 
         # Verificar si el alumno existe en MongoDB
@@ -47,7 +47,7 @@ def asignar_alumno_form():
 
     # Obtener los nombres de los alumnos desde MongoDB
     db = get_mongo_connection()
-    alumnos = list(db["alumnos"].find({}, {"_id": 0, "documento": 1, "nombre": 1}))
+    alumnos = list(db["alumnos"].find({"baja_logica": False}, {"_id": 0, "documento": 1, "nombre": 1}))
 
     for curso in cursos:
         if curso['id_alumno']:
@@ -58,15 +58,39 @@ def asignar_alumno_form():
                     # Convertir a ObjectId y buscar en MongoDB
                     alumno = db["alumnos"].find_one({"_id": ObjectId(alumno_id.strip())})
                     if alumno:
-                        curso['alumnos'].append({"nombre": alumno['nombre'], "documento": alumno['documento']})
+                        curso['alumnos'].append({"nombre": alumno['nombre'], "documento": alumno['documento'], "id": alumno["_id"]})
                     else:
                         curso['alumnos'].append({"nombre": "Alumno no encontrado", "documento": ""})
                 except Exception as e:
                     curso['alumnos'].append({"nombre": "Error en búsqueda", "documento": str(e)})
+
         else:
             curso['alumnos'] = []
 
     return render_template('asignar.html', cursos=cursos, alumnos=alumnos)
+
+@app.route('/baja/<curso_id>/<alumno_id>', methods=['GET'])
+def baja_alumno(curso_id, alumno_id):
+    # Conectar a las bases de datos
+    db = get_mongo_connection()
+    db_connection = get_mysql_connection()
+    cursor = db_connection.cursor(dictionary=True)
+
+    # Actualizar la baja lógica en MongoDB
+    db["alumnos"].update_one({"_id": ObjectId(alumno_id)}, {"$set": {"baja_logica": True}})
+
+    # Actualizar la lista de alumnos en MySQL
+    cursor.execute("SELECT * FROM cursos WHERE id = %s", (curso_id,))
+    curso = cursor.fetchone()
+
+    if curso and curso['id_alumno']:
+        id_alumnos = curso['id_alumno'].split(',')
+        if alumno_id in id_alumnos:
+            id_alumnos.remove(alumno_id)
+            cursor.execute("UPDATE cursos SET id_alumno = %s WHERE id = %s", (','.join(id_alumnos), curso_id))
+            db_connection.commit()
+
+    return redirect(url_for('asignar_alumno_form'))
 
 if __name__ == '__main__':
     app.run(debug=True)
